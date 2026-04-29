@@ -1,17 +1,25 @@
-query AdminDisputeDetail($id: String!) {
+query AdminDisputeDetail($id: ID!) {
   adminDisputeDetail(id: $id) {
     id
-    status
-    reason
-    description
     campaignId
+    description
+    reason
+    status
+    resolution
     milestoneId
+    createdAt
   }
 }
 
-mutation ResolveDispute($id: String!, $input: AdminResolveDisputeDto!) {
+mutation ResolveDispute($id: ID!, $input: AdminResolveDisputeDto!) {
   resolveDispute(id: $id, input: $input) {
     id
+    campaignId
+    description
+    reason
     status
+    resolution
+    milestoneId
+    createdAt
   }
 }

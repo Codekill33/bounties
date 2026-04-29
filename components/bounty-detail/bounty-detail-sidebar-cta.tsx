@@ -42,6 +42,7 @@ import { authClient } from "@/lib/auth-client";
 import { useCompetitionJoinState } from "@/hooks/use-competition-join-state";
 import type { CancellationRecord } from "@/types/escrow";
 import { useCancelBountyDialog } from "@/hooks/use-cancel-bounty-dialog";
+import { useCanRaiseDispute } from "@/hooks/use-can-raise-dispute";
 import { toast } from "sonner";
 import type { Bounty } from "@/types/bounty";
 
@@ -79,19 +80,14 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
   const isCreator =
     (session?.user as { id?: string } | undefined)?.id === bounty.createdBy;
 
-  const isParticipant = bounty.submissions?.some(
-    (s) => s.submittedBy === (session?.user as { id?: string } | undefined)?.id
-  );
-
-  const canRaiseDispute = (isParticipant || isCreator) && 
-    (bounty.status === "IN_PROGRESS" || bounty.status === "UNDER_REVIEW");
+  const canRaiseDispute = useCanRaiseDispute(bounty);
 
   const canCancel =
     isCreator && (bounty.status === "OPEN" || bounty.status === "IN_PROGRESS");
 
-  // claimCount: use backend claimCount when available, fall back to _count.submissions
-  const claimCount = bounty.claimCount ?? bounty._count?.submissions ?? 0;
-  const maxParticipants = bounty.maxParticipants ?? null;
+  // Fall back to _count.submissions until backend adds claimCount / maxParticipants
+  const claimCount = bounty._count?.submissions ?? 0;
+  const maxParticipants: number | null = null;
   const deadline = bounty.bountyWindow?.endDate ?? null;
   const isFinalized = bounty.status === "COMPLETED";
   const submissionCount = bounty._count?.submissions ?? 0;
@@ -109,11 +105,9 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
     }
   };
 
-  const handleRaiseDispute = async () => {
-    setIsSubmittingDispute(true);
-    // Note: backend mutation for raiseDispute is pending schema update
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success("Dispute raised successfully.");
+  const handleRaiseDispute = () => {
+    // Dispute submission is not yet available — backend schema pending
+    toast.info("Dispute submission is coming soon.");
     setDisputeDialogOpen(false);
     setDisputeReason("");
     setDisputeDescription("");
@@ -276,9 +270,10 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
               variant="ghost"
               className="w-full text-gray-400 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs h-8"
               onClick={() => setDisputeDialogOpen(true)}
+              disabled
             >
               <Gavel className="size-3 mr-2" />
-              Raise a Dispute
+              Raise a Dispute (Coming Soon)
             </Button>
           </>
         )}
@@ -491,11 +486,7 @@ export function MobileCTA({ bounty, onCancelled }: MobileCTAProps) {
   const isCreator =
     (session?.user as { id?: string } | undefined)?.id === bounty.createdBy;
 
-  const isParticipant = bounty.submissions?.some(
-    (s) => s.submittedBy === (session?.user as { id?: string } | undefined)?.id
-  );
-  const canRaiseDispute = (isParticipant || isCreator) && 
-    (bounty.status === "IN_PROGRESS" || bounty.status === "UNDER_REVIEW");
+  const canRaiseDispute = useCanRaiseDispute(bounty);
 
   const canCancel =
     isCreator && (bounty.status === "OPEN" || bounty.status === "IN_PROGRESS");
@@ -574,6 +565,18 @@ export function MobileCTA({ bounty, onCancelled }: MobileCTAProps) {
             </Button>
           )}
         </div>
+      )}
+
+      {/* Mobile Raise Dispute — coming soon */}
+      {canRaiseDispute && (
+        <Button
+          variant="ghost"
+          className="w-full mt-2 text-gray-400 text-xs h-8"
+          disabled
+        >
+          <Gavel className="size-3 mr-2" />
+          Raise a Dispute (Coming Soon)
+        </Button>
       )}
 
       {/* Mobile Cancel Dialog */}
