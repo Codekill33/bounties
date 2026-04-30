@@ -31,6 +31,18 @@ const defaultPrefs: NotificationPrefs = {
   digestCadence: "off",
 };
 
+const STORAGE_KEY = "notification-prefs";
+
+function loadPrefs(): NotificationPrefs {
+  if (typeof window === "undefined") return defaultPrefs;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as NotificationPrefs) : defaultPrefs;
+  } catch {
+    return defaultPrefs;
+  }
+}
+
 const eventLabels: Record<
   keyof Omit<NotificationPrefs, "digestCadence">,
   string
@@ -42,7 +54,7 @@ const eventLabels: Record<
 };
 
 export function NotificationsTab() {
-  const [prefs, setPrefs] = useState<NotificationPrefs>(defaultPrefs);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(loadPrefs);
   const [isPending, setIsPending] = useState(false);
 
   const toggleChannel = (
@@ -58,10 +70,10 @@ export function NotificationsTab() {
   const handleSave = async () => {
     setIsPending(true);
     try {
-      // TODO: wire to backend notification preferences endpoint
-      toast.info(
-        "Notification preferences saved locally. Backend sync coming soon.",
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      toast.success("Notification preferences saved.");
+    } catch {
+      toast.error("Failed to save notification preferences.");
     } finally {
       setIsPending(false);
     }

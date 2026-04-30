@@ -3,14 +3,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
+import { FormFieldWrapper } from "@/components/ui/form-field-wrapper";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -58,6 +52,11 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+type SessionCache = { user?: Partial<ProfileFormValues> } & Record<
+  string,
+  unknown
+>;
+
 interface ProfileTabProps {
   defaultValues: ProfileFormValues;
 }
@@ -81,16 +80,16 @@ export function ProfileTab({ defaultValues }: ProfileTabProps) {
 
     if (Object.keys(changedValues).length === 0) return;
 
-    const previous = queryClient.getQueryData(authKeys.session());
+    const previous = queryClient.getQueryData<SessionCache>(authKeys.session());
 
-    queryClient.setQueryData(authKeys.session(), (old: unknown) => {
+    queryClient.setQueryData<SessionCache>(authKeys.session(), (old) => {
       if (!old || typeof old !== "object") return old;
-      const session = old as { user?: Partial<ProfileFormValues> };
-      return { ...session, user: { ...session.user, ...changedValues } };
+      return { ...old, user: { ...old.user, ...changedValues } };
     });
 
     try {
       await mutateAsync(changedValues);
+      form.reset(values);
     } catch {
       queryClient.setQueryData(authKeys.session(), previous);
     }
@@ -100,55 +99,38 @@ export function ProfileTab({ defaultValues }: ProfileTabProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Display Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Your name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Display Name"
+            render={({ field }) => <Input placeholder="Your name" {...field} />}
           />
 
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="image"
+            label="Avatar URL"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Avatar URL</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://example.com/avatar.png"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <Input
+                placeholder="https://example.com/avatar.png"
+                {...field}
+                value={field.value ?? ""}
+              />
             )}
           />
 
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="bio"
+            label="Bio"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bio</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Tell us a bit about yourself"
-                    className="resize-none"
-                    rows={4}
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <Textarea
+                placeholder="Tell us a bit about yourself"
+                className="resize-none"
+                rows={4}
+                {...field}
+                value={field.value ?? ""}
+              />
             )}
           />
         </div>
@@ -156,57 +138,42 @@ export function ProfileTab({ defaultValues }: ProfileTabProps) {
         <div className="space-y-4">
           <h3 className="text-sm font-medium">Social Links</h3>
 
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="github"
+            label="GitHub"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>GitHub</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://github.com/username"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <Input
+                placeholder="https://github.com/username"
+                {...field}
+                value={field.value ?? ""}
+              />
             )}
           />
 
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="twitter"
+            label="Twitter / X"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Twitter / X</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://twitter.com/username"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <Input
+                placeholder="https://twitter.com/username"
+                {...field}
+                value={field.value ?? ""}
+              />
             )}
           />
 
-          <FormField
+          <FormFieldWrapper
             control={form.control}
             name="website"
+            label="Personal Website"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Personal Website</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://yoursite.com"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <Input
+                placeholder="https://yoursite.com"
+                {...field}
+                value={field.value ?? ""}
+              />
             )}
           />
         </div>

@@ -107,8 +107,11 @@ export async function getCurrentUser(): Promise<User | null> {
       website?: string | null;
     };
 
+    const id = u.id;
+    if (!id) return null;
+
     return {
-      id: u.id!,
+      id,
       name: u.name ?? "Authenticated User",
       email: u.email ?? undefined,
       image: u.image ?? undefined,
