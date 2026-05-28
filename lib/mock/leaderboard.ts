@@ -33,7 +33,7 @@ function makeMockContributor(
 }
 
 export function makeMockLeaderboardData(count = 50): LeaderboardContributor[] {
-  return [
+  const baseList = [
     makeMockContributor("1", 1, ReputationTier.Legend, 15000),
     makeMockContributor("2", 2, ReputationTier.Legend, 14500),
     makeMockContributor("3", 3, ReputationTier.Expert, 12000),
@@ -44,8 +44,14 @@ export function makeMockLeaderboardData(count = 50): LeaderboardContributor[] {
     makeMockContributor("8", 8, ReputationTier.Contributor, 4500),
     makeMockContributor("9", 9, ReputationTier.Newcomer, 1000),
     makeMockContributor("10", 10, ReputationTier.Newcomer, 800),
-    // Generate some more for pagination testing
-    ...Array.from({ length: count - 10 }, (_, i) =>
+  ];
+
+  const extra = Math.max(0, count - 10);
+  if (extra === 0) return baseList;
+
+  return [
+    ...baseList,
+    ...Array.from({ length: extra }, (_, i) =>
       makeMockContributor(
         `${i + 11}`,
         i + 11,
@@ -63,6 +69,9 @@ export function getMockLeaderboard(
   limit: number = 10,
   filterTier?: ReputationTier,
 ) {
+  const safePage = Math.max(1, Math.floor(Number.isNaN(page) ? 1 : page));
+  const safeLimit = Math.max(1, Math.floor(Number.isNaN(limit) ? 10 : limit));
+
   let filtered = [...mockLeaderboardData];
 
   if (filterTier) {
@@ -70,8 +79,8 @@ export function getMockLeaderboard(
   }
 
   const sorted = filtered.sort((a, b) => b.totalScore - a.totalScore);
-  const start = (page - 1) * limit;
-  const paginated = sorted.slice(start, start + limit);
+  const start = (safePage - 1) * safeLimit;
+  const paginated = sorted.slice(start, start + safeLimit);
 
   return {
     data: paginated,

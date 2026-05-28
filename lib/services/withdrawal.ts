@@ -22,8 +22,25 @@ export class WithdrawalService {
       blockers: {},
     };
 
+    // Validate amount is a positive number
+    if (Number.isNaN(amount) || amount <= 0) {
+      result.valid = false;
+      result.errors.push("Invalid amount");
+      result.blockers.invalidAmount = true;
+    }
+
+    // Check amount exceeds fee
+    if (!result.blockers.invalidAmount && amount <= 2.5) {
+      result.valid = false;
+      result.errors.push("Amount must exceed fee");
+      result.blockers.feeTooHigh = true;
+    }
+
     // Check balance
-    if (amount > mockWalletWithAssets.balance) {
+    if (
+      !result.blockers.invalidAmount &&
+      amount > mockWalletWithAssets.balance
+    ) {
       result.valid = false;
       result.errors.push("Insufficient balance");
       result.blockers.insufficientBalance = true;
@@ -112,6 +129,6 @@ export class WithdrawalService {
   }
 
   static async getHistory(userId: string): Promise<WithdrawalRequest[]> {
-    return MOCK_WITHDRAWALS[userId] || [];
+    return MOCK_WITHDRAWALS[userId] ? [...MOCK_WITHDRAWALS[userId]] : [];
   }
 }
