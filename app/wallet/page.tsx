@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { WalletPageSkeleton } from "@/components/ui/loading";
 import { WalletInfo } from "@/types/wallet";
-import { mockWalletWithAssets } from "@/lib/mock-wallet";
+import { mockWalletWithAssets } from "@/lib/mock/wallet";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
