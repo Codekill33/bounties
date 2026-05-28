@@ -15,7 +15,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { bountyKeys } from "@/lib/query/query-keys";
-import { getAllProjects } from "@/lib/mock-project";
+import { getAllProjects } from "@/lib/mock/projects";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
