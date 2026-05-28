@@ -135,6 +135,7 @@ export function Model4MaintainerDashboard({
                             variant="ghost"
                             size="icon-sm"
                             className="text-gray-400 hover:text-white"
+                            aria-label="Send message"
                             onClick={() =>
                               handleAction("Message", contributor.userName)
                             }
@@ -224,6 +225,7 @@ export function Model4MaintainerDashboard({
                             variant="ghost"
                             size="icon-sm"
                             className="text-red-400/50 hover:text-red-400 hover:bg-red-400/10"
+                            aria-label="Remove from slot"
                             onClick={() =>
                               handleAction("Remove", contributor.userName)
                             }
