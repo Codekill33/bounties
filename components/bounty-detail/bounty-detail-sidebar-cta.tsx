@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Github,
   Copy,
@@ -16,6 +18,13 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -24,8 +33,9 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
-import { BountyFieldsFragment } from "@/lib/graphql/generated";
+import { BountyFieldsFragment, DisputeReasonEnum } from "@/lib/graphql/generated";
 import { StatusBadge, TypeBadge } from "./bounty-badges";
 import { FcfsClaimButton } from "@/components/bounty/fcfs-claim-button";
 import { CompetitionSubmission } from "@/components/bounty/competition-submission";
@@ -36,6 +46,18 @@ import {
   ApplicationDialog,
 } from "@/components/bounty/application-dialog";
 import { useBountyCTAState } from "./use-bounty-cta-state";
+import { useRaiseDispute } from "@/hooks/use-bounty-application";
+
+// Human-readable labels for each dispute reason
+const DISPUTE_REASON_LABELS: Record<DisputeReasonEnum, string> = {
+  [DisputeReasonEnum.MilestoneNotDelivered]: "Milestone Not Delivered",
+  [DisputeReasonEnum.PoorQualityWork]: "Poor Quality Work",
+  [DisputeReasonEnum.DeadlineMissed]: "Deadline Missed",
+  [DisputeReasonEnum.ScopeChange]: "Scope Change",
+  [DisputeReasonEnum.MisuseOfFunds]: "Misuse of Funds",
+  [DisputeReasonEnum.CommunicationIssues]: "Communication Issues",
+  [DisputeReasonEnum.Other]: "Other",
+};
 
 type SidebarBounty = BountyFieldsFragment & Partial<Bounty>;
 
@@ -45,6 +67,52 @@ interface SidebarCTAProps {
 }
 
 export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
+  const router = useRouter();
+  const raiseDisputeMutation = useRaiseDispute();
+
+  // Dispute dialog state
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState<DisputeReasonEnum | "">("");
+  const [disputeDescription, setDisputeDescription] = useState("");
+  const [disputeReasonError, setDisputeReasonError] = useState("");
+  const [disputeDescriptionError, setDisputeDescriptionError] = useState("");
+
+  const handleRaiseDispute = async () => {
+    // Inline validation
+    let valid = true;
+    if (!disputeReason) {
+      setDisputeReasonError("Please select a reason.");
+      valid = false;
+    } else {
+      setDisputeReasonError("");
+    }
+    if (!disputeDescription.trim()) {
+      setDisputeDescriptionError("Please describe the dispute.");
+      valid = false;
+    } else {
+      setDisputeDescriptionError("");
+    }
+    if (!valid) return;
+
+    try {
+      const result = await raiseDisputeMutation.mutateAsync({
+        bountyId: bounty.id,
+        reason: disputeReason as DisputeReasonEnum,
+        description: disputeDescription.trim(),
+      });
+      // Reset form state before closing so onOpenChange doesn't double-reset
+      setDisputeReason("");
+      setDisputeDescription("");
+      setDisputeReasonError("");
+      setDisputeDescriptionError("");
+      setDisputeDialogOpen(false);
+      toast.success("Dispute filed successfully.");
+      router.push(`/dispute/${result.id}`);
+    } catch {
+      toast.error("Failed to file dispute. Please try again.");
+    }
+  };
+
   const {
     walletAddress,
     hasJoined,
@@ -251,10 +319,10 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
             <Button
               variant="ghost"
               className="w-full text-gray-400 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs h-8"
-              disabled
+              onClick={() => setDisputeDialogOpen(true)}
             >
               <Gavel className="size-3 mr-2" />
-              Raise a Dispute (Coming Soon)
+              Raise a Dispute
             </Button>
           </>
         )}
@@ -322,6 +390,111 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
           />
         </>
       )}
+
+      {/* Raise Dispute Dialog */}
+      <AlertDialog
+        open={disputeDialogOpen}
+        onOpenChange={(open) => {
+          if (!raiseDisputeMutation.isPending) {
+            setDisputeDialogOpen(open);
+            if (!open) {
+              setDisputeReason("");
+              setDisputeDescription("");
+              setDisputeReasonError("");
+              setDisputeDescriptionError("");
+            }
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-400">
+              <Gavel className="size-5" />
+              Raise a Dispute
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Describe the issue with this bounty. A moderator will review your
+              dispute and reach out to both parties.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4 mt-2">
+            {/* Reason */}
+            <div className="space-y-1.5">
+              <Label htmlFor="dispute-reason" className="text-sm font-medium">
+                Reason <span className="text-red-400">*</span>
+              </Label>
+              <Select
+                value={disputeReason}
+                onValueChange={(val) => {
+                  setDisputeReason(val as DisputeReasonEnum);
+                  setDisputeReasonError("");
+                }}
+                disabled={raiseDisputeMutation.isPending}
+              >
+                <SelectTrigger
+                  id="dispute-reason"
+                  className={disputeReasonError ? "border-red-500" : ""}
+                >
+                  <SelectValue placeholder="Select a reason…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.values(DisputeReasonEnum) as DisputeReasonEnum[]).map(
+                    (value) => (
+                      <SelectItem key={value} value={value}>
+                        {DISPUTE_REASON_LABELS[value]}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+              {disputeReasonError && (
+                <p className="text-xs text-red-400">{disputeReasonError}</p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="dispute-description"
+                className="text-sm font-medium"
+              >
+                Description <span className="text-red-400">*</span>
+              </Label>
+              <Textarea
+                id="dispute-description"
+                placeholder="Explain what happened and why you are raising this dispute…"
+                value={disputeDescription}
+                onChange={(e) => {
+                  setDisputeDescription(e.target.value);
+                  setDisputeDescriptionError("");
+                }}
+                className={`min-h-24 resize-none ${disputeDescriptionError ? "border-red-500" : ""}`}
+                disabled={raiseDisputeMutation.isPending}
+              />
+              {disputeDescriptionError && (
+                <p className="text-xs text-red-400">{disputeDescriptionError}</p>
+              )}
+            </div>
+          </div>
+
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel disabled={raiseDisputeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => void handleRaiseDispute()}
+              disabled={raiseDisputeMutation.isPending}
+            >
+              {raiseDisputeMutation.isPending && (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              )}
+              Submit Dispute
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>

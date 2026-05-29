@@ -5,7 +5,9 @@ import { authClient } from "@/lib/auth-client";
 import { bountyKeys } from "@/lib/query/query-keys";
 import { MOCK_MODEL4_MILESTONES } from "@/lib/mock/model4";
 import type { BountyQuery } from "@/lib/graphql/generated";
+import type { DisputeReasonEnum } from "@/lib/graphql/generated";
 import type { ContributorProgress, Bounty } from "@/types/bounty";
+import { post } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Contract client shape (resolved from globalThis.__applicationContracts)
@@ -320,6 +322,50 @@ export function useApplyForSlot() {
           queryKey: bountyKeys.detail(variables.bountyId),
         });
       }
+      qc.invalidateQueries({ queryKey: bountyKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Hook: raise dispute
+// ---------------------------------------------------------------------------
+
+export interface RaiseDisputeInput {
+  bountyId: string;
+  reason: DisputeReasonEnum;
+  description: string;
+}
+
+export interface RaiseDisputeResult {
+  id: string;
+  campaignId: string;
+  reason: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
+/**
+ * Submits a new dispute for a bounty via the REST API.
+ *
+ * On success it returns the created dispute (including its `id`) and
+ * invalidates the bounty detail query so the UI reflects the new DISPUTED
+ * status immediately.
+ */
+export function useRaiseDispute() {
+  const qc = useQueryClient();
+
+  return useMutation<RaiseDisputeResult, Error, RaiseDisputeInput>({
+    mutationFn: async ({ bountyId, reason, description }) => {
+      return post<RaiseDisputeResult>("/api/disputes", {
+        campaignId: bountyId,
+        reason,
+        description,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: bountyKeys.detail(variables.bountyId) });
       qc.invalidateQueries({ queryKey: bountyKeys.lists() });
     },
   });
