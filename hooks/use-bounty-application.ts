@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { bountyKeys } from "@/lib/query/query-keys";
 import { BountyQuery } from "@/lib/graphql/generated";
+import type { Bounty } from "@/types/bounty";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -38,20 +39,20 @@ export function useBountyApplication(bountyId: string) {
       );
 
       if (previous?.bounty) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const contributorProgress =
-          (previous.bounty as any).contributorProgress || [];
+          (previous.bounty as unknown as Bounty).contributorProgress || [];
         const contributorIndex = contributorProgress.findIndex(
-          (c) => c.userId === contributorId,
+          (c: { userId: string; currentMilestoneId: string }) =>
+            c.userId === contributorId,
         );
 
         if (contributorIndex >= 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const milestones = (previous.bounty as any).milestones || [];
+          const milestones =
+            (previous.bounty as unknown as Bounty).milestones || [];
           const currentMilestoneId =
             contributorProgress[contributorIndex].currentMilestoneId;
           const milestoneIndex = milestones.findIndex(
-            (m) => m.id === currentMilestoneId,
+            (m: { id: string }) => m.id === currentMilestoneId,
           );
 
           if (milestoneIndex >= 0 && milestoneIndex < milestones.length - 1) {
@@ -67,7 +68,7 @@ export function useBountyApplication(bountyId: string) {
               bounty: {
                 ...previous.bounty,
                 contributorProgress: newProgress,
-              },
+              } as unknown as BountyQuery["bounty"],
             });
           }
         }
@@ -95,19 +96,18 @@ export function useBountyApplication(bountyId: string) {
       );
 
       if (previous?.bounty) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const contributorProgress =
-          (previous.bounty as any).contributorProgress || [];
+          (previous.bounty as unknown as Bounty).contributorProgress || [];
 
         queryClient.setQueryData<BountyQuery>(bountyKeys.detail(bountyId), {
           ...previous,
           bounty: {
             ...previous.bounty,
             contributorProgress: contributorProgress.filter(
-              (c) => c.userId !== contributorId,
+              (c: { userId: string; currentMilestoneId: string }) =>
+                c.userId !== contributorId,
             ),
-            // totalSlotsOccupied isn't explicitly in the standard schema but we'd decrement it if it exists.
-          },
+          } as unknown as BountyQuery["bounty"],
         });
       }
       return { previous };
