@@ -8,6 +8,7 @@ import { fetcher } from "@/lib/graphql/client";
 import {
   ReviewSubmissionDocument,
   type BountyQuery,
+  type DisputeReasonEnum,
   type ReviewSubmissionMutation,
   type ReviewSubmissionMutationVariables,
 } from "@/lib/graphql/generated";
@@ -15,12 +16,14 @@ import type { ContributorProgress, Bounty, Milestone } from "@/types/bounty";
 import { escrowKeys } from "./use-escrow";
 import { EscrowService } from "@/lib/services/escrow";
 import type { EscrowPool } from "@/types/escrow";
+import { post } from "@/lib/api/client";
 
 export type ExtendedBountyQuery = Omit<BountyQuery, "bounty"> & {
   bounty?: BountyQuery["bounty"] & Partial<Bounty>;
 };
 
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---------------------------------------------------------------------------
 // Contract client shape (resolved from globalThis.__applicationContracts)
@@ -400,7 +403,10 @@ export function useApplyForSlot() {
   });
 }
 // Static memory storage for messages
-const recordedMessages: Record<string, Array<{ contributorId: string; message: string; timestamp: string }>> = {};
+const recordedMessages: Record<
+  string,
+  Array<{ contributorId: string; message: string; timestamp: string }>
+> = {};
 
 export function useReleasePayment(bountyId: string) {
   const queryClient = useQueryClient();
@@ -552,9 +558,12 @@ export function useRemoveContributor(bountyId: string) {
       if (previous?.bounty) {
         const contributorProgress: ContributorProgress[] =
           previous.bounty.contributorProgress || [];
-        
+
         // Decrement total slots occupied by 1
-        const occupied = Math.max(0, (previous.bounty.totalSlotsOccupied ?? 1) - 1);
+        const occupied = Math.max(
+          0,
+          (previous.bounty.totalSlotsOccupied ?? 1) - 1,
+        );
 
         queryClient.setQueryData<ExtendedBountyQuery>(
           bountyKeys.detail(bountyId),
@@ -593,7 +602,7 @@ export function useSendMessage(bountyId: string) {
       message: string;
     }) => {
       await delay(1000);
-      
+
       // Store in static memory for real message logging/recording
       if (!recordedMessages[bountyId]) {
         recordedMessages[bountyId] = [];
@@ -603,10 +612,55 @@ export function useSendMessage(bountyId: string) {
         message,
         timestamp: new Date().toISOString(),
       });
-      
-      console.log(`[useSendMessage] Recorded message for bountyId ${bountyId}: contributorId=${contributorId}, message="${message}"`);
+
+      console.log(
+        `[useSendMessage] Recorded message for bountyId ${bountyId}: contributorId=${contributorId}, message="${message}"`,
+      );
       return { contributorId, message };
     },
   });
 }
 
+// ---------------------------------------------------------------------------
+// Hook: raise dispute
+// ---------------------------------------------------------------------------
+
+export interface RaiseDisputeInput {
+  bountyId: string;
+  reason: DisputeReasonEnum;
+  description: string;
+}
+
+export interface RaiseDisputeResult {
+  id: string;
+  campaignId: string;
+  reason: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
+/**
+ * Submits a new dispute for a bounty via the REST API.
+ *
+ * On success it returns the created dispute (including its `id`) and
+ * invalidates the bounty detail query so the UI reflects the new DISPUTED
+ * status immediately.
+ */
+export function useRaiseDispute() {
+  const qc = useQueryClient();
+
+  return useMutation<RaiseDisputeResult, Error, RaiseDisputeInput>({
+    mutationFn: async ({ bountyId, reason, description }) => {
+      return post<RaiseDisputeResult>("/api/disputes", {
+        campaignId: bountyId,
+        reason,
+        description,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: bountyKeys.detail(variables.bountyId) });
+      qc.invalidateQueries({ queryKey: bountyKeys.lists() });
+    },
+  });
+}
