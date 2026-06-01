@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Github,
   Copy,
@@ -32,10 +33,9 @@ import { CompetitionSubmission } from "@/components/bounty/competition-submissio
 import { CompetitionStatus } from "@/components/bounty/competition-status";
 import type { CancellationRecord } from "@/types/escrow";
 import type { Bounty } from "@/types/bounty";
-import {
-  ApplicationDialog,
-} from "@/components/bounty/application-dialog";
+import { ApplicationDialog } from "@/components/bounty/application-dialog";
 import { useBountyCTAState } from "./use-bounty-cta-state";
+import { RaiseDisputeDialog } from "./raise-dispute-dialog";
 
 type SidebarBounty = BountyFieldsFragment & Partial<Bounty>;
 
@@ -45,6 +45,8 @@ interface SidebarCTAProps {
 }
 
 export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+
   const {
     walletAddress,
     hasJoined,
@@ -251,10 +253,10 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
             <Button
               variant="ghost"
               className="w-full text-gray-400 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs h-8"
-              disabled
+              onClick={() => setDisputeDialogOpen(true)}
             >
               <Gavel className="size-3 mr-2" />
-              Raise a Dispute (Coming Soon)
+              Raise a Dispute
             </Button>
           </>
         )}
@@ -322,6 +324,13 @@ export function SidebarCTA({ bounty, onCancelled }: SidebarCTAProps) {
           />
         </>
       )}
+
+      {/* Raise Dispute Dialog */}
+      <RaiseDisputeDialog
+        open={disputeDialogOpen}
+        onOpenChange={setDisputeDialogOpen}
+        bountyId={bounty.id}
+      />
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
