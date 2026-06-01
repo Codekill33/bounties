@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAccessToken } from "@/lib/auth-utils";
 import { getCurrentUser } from "@/lib/server-auth";
-import { graphqlRequest } from "@/lib/server-graphql";
 import type { AdminDisputeDto, DisputeReasonEnum } from "@/lib/graphql/generated";
 
 /**
@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { getAccessToken } = await import("@/lib/auth-utils");
     const token = await getAccessToken();
 
     const backendResponse = await fetch(`${backendUrl}/disputes`, {
